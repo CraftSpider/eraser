@@ -1,6 +1,8 @@
+//! A standard erased box implementation, larger but simple implementation
 
-use std::ptr::{NonNull, Pointee};
-use std::mem;
+use alloc::boxed::Box;
+use core::mem;
+use core::ptr::{NonNull, Pointee};
 
 #[inline]
 fn reify_ptr<T: ?Sized + Pointee>(data: NonNull<()>, meta: NonNull<()>) -> NonNull<T> {
@@ -26,6 +28,10 @@ fn drop_erased<T: ?Sized + Pointee>(data: NonNull<()>, meta: NonNull<()>) {
 /// An erased box, storing a (possibly unsized) value of unknown type. Creating one is safe,
 /// but converting it back into any type is unsafe as it requires the user to know the type
 /// stored in the box.
+///
+/// This box will always be three pointers wide, even for sized types, due to needing to store
+/// an unknown metadata. If you want a box that will always be 1 pointer wide, look at
+/// [`ThinErasedBox`](crate::ThinErasedBox)
 pub struct ErasedBox {
     data: NonNull<()>,
     meta: NonNull<()>,
@@ -33,8 +39,8 @@ pub struct ErasedBox {
 }
 
 impl ErasedBox {
-    /// Create a new ErasedBox from a value
-    pub fn new<T: 'static>(val: T) -> ErasedBox {
+    /// Create a new `ErasedBox` from a value
+    pub fn new<T>(val: T) -> ErasedBox {
         ErasedBox::from(Box::new(val))
     }
 
@@ -97,7 +103,7 @@ impl<T: ?Sized> From<Box<T>> for ErasedBox {
         ErasedBox {
             data,
             meta,
-            drop: drop_erased::<T>
+            drop: drop_erased::<T>,
         }
     }
 }

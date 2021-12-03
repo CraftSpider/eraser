@@ -2,7 +2,9 @@
 name = "craft-eraser"
 version = "0.1.0"
 edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[dependencies]
+description = "A set of simple type-erased box primitives"
+license = "MIT/Apache-2.0"
+repository = "https://github.com/CraftSpider/eraser"
+readme = "README.md"
+keywords = ["erased", "type erasure", "no_std"]
+categories = ["memory-management", "no-std"]

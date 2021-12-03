@@ -1,2 +1,9 @@
+
+# Project files
+
+.idea/
+
+# Rust files
+
 /target
 Cargo.lock

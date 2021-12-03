@@ -1,6 +1,6 @@
 [package]
 name = "craft-eraser"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 description = "A set of simple type-erased box primitives"
 license = "MIT/Apache-2.0"

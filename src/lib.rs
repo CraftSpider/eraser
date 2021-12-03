@@ -8,6 +8,11 @@
 //! non-`'static` data or wanting to store the data in one pointer even when unsized. As
 //! a trade-off, there is no safe way to retrieve the data, as the user must already know the
 //! type and lifetimes involved and verify them without the help of the compiler.
+//!
+//! # Erased Pointer
+//!
+//! The unowned equivalent to an erased box. Basically just a pointer-meta pair, that ensures
+//! the meta is handled correctly on destruction.
 
 #![feature(ptr_metadata, layout_for_ptr)]
 #![warn(
@@ -31,8 +36,12 @@
 
 extern crate alloc;
 
+pub mod eptr;
+pub mod eref;
 pub mod ebox;
 pub mod thin_ebox;
 
+pub use eptr::{ErasedPtr, ErasedNonNull};
+pub use eref::{ErasedRef, ErasedMut};
 pub use ebox::ErasedBox;
 pub use thin_ebox::ThinErasedBox;

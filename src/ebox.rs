@@ -44,6 +44,23 @@ impl ErasedBox {
         ErasedBox::from(Box::new(val))
     }
 
+    /// Create a new `ErasedBox` from a pointer to an existing allocation
+    ///
+    /// # Safety
+    ///
+    /// The pointer must be valid, and the allocation should match that which can later be passed
+    /// to `Box::from_raw`
+    pub unsafe fn from_raw<T: ?Sized>(val: NonNull<T>) -> ErasedBox {
+        let (data, meta) = val.to_raw_parts();
+        let meta = NonNull::from(Box::leak(Box::new(meta))).cast::<()>();
+
+        ErasedBox {
+            data,
+            meta,
+            drop: drop_erased::<T>,
+        }
+    }
+
     /// Get the raw pointer to the contained data
     pub fn raw_ptr(&self) -> NonNull<()> {
         self.data
@@ -97,14 +114,8 @@ impl ErasedBox {
 impl<T: ?Sized> From<Box<T>> for ErasedBox {
     fn from(b: Box<T>) -> Self {
         let val = NonNull::from(Box::leak(b));
-        let (data, meta) = val.to_raw_parts();
-        let meta = NonNull::from(Box::leak(Box::new(meta))).cast::<()>();
-
-        ErasedBox {
-            data,
-            meta,
-            drop: drop_erased::<T>,
-        }
+        // SAFETY: We just got this pointer from `Box::leak`, it's sure to uphold the requirements
+        unsafe { ErasedBox::from_raw(val) }
     }
 }
 

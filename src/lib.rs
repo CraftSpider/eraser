@@ -36,12 +36,12 @@
 
 extern crate alloc;
 
+pub mod ebox;
 pub mod eptr;
 pub mod eref;
-pub mod ebox;
 pub mod thin_ebox;
 
-pub use eptr::{ErasedPtr, ErasedNonNull};
-pub use eref::{ErasedRef, ErasedMut};
 pub use ebox::ErasedBox;
+pub use eptr::{ErasedNonNull, ErasedPtr};
+pub use eref::{ErasedMut, ErasedRef};
 pub use thin_ebox::ThinErasedBox;

@@ -1,8 +1,8 @@
 //! Erased reference types, all are 3 pointers wide
 
-use core::ptr::Pointee;
-use core::marker::PhantomData;
 use core::fmt;
+use core::marker::PhantomData;
+use core::ptr::Pointee;
 
 use crate::ErasedNonNull;
 
@@ -41,13 +41,13 @@ impl<'a> ErasedRef<'a> {
     }
 }
 
-impl fmt::Pointer for ErasedRef {
+impl fmt::Pointer for ErasedRef<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Pointer::fmt(&self.ptr, f)
     }
 }
 
-impl fmt::Debug for ErasedRef {
+impl fmt::Debug for ErasedRef<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("ErasedRef")
             .field("ptr", &self.ptr)
@@ -90,13 +90,13 @@ impl<'a> ErasedMut<'a> {
     }
 }
 
-impl fmt::Pointer for ErasedMut {
+impl fmt::Pointer for ErasedMut<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Pointer::fmt(&self.ptr, f)
     }
 }
 
-impl fmt::Debug for ErasedMut {
+impl fmt::Debug for ErasedMut<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("ErasedRef")
             .field("ptr", &self.ptr)

@@ -1,8 +1,8 @@
 //! A standard erased box implementation, larger but simple implementation
 
 use alloc::boxed::Box;
-use core::{mem, fmt};
 use core::ptr::{NonNull, Pointee};
+use core::{fmt, mem};
 
 #[inline]
 fn reify_ptr<T: ?Sized + Pointee>(data: NonNull<()>, meta: NonNull<()>) -> NonNull<T> {

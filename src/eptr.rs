@@ -2,7 +2,7 @@
 
 use alloc::boxed::Box;
 use core::ptr::{NonNull, Pointee};
-use core::ptr;
+use core::{fmt, ptr};
 
 fn drop_impl<T: ?Sized + Pointee>(meta: NonNull<()>) {
     // SAFETY: We know that the meta came from a T of this type
@@ -71,6 +71,21 @@ impl ErasedPtr {
     }
 }
 
+impl fmt::Pointer for ErasedPtr {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Pointer::fmt(&self.data, f)
+    }
+}
+
+impl fmt::Debug for ErasedPtr {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ErasedPtr")
+            .field("data", &self.data)
+            .field("meta", &self.meta)
+            .finish_non_exhaustive()
+    }
+}
+
 impl<T: ?Sized> From<*const T> for ErasedPtr {
     fn from(val: *const T) -> Self {
         ErasedPtr::new(val)
@@ -133,6 +148,21 @@ impl ErasedNonNull {
     pub unsafe fn reify_ptr<T: ?Sized + Pointee>(&self) -> NonNull<T> {
         let meta = self.meta.cast::<T::Metadata>().as_ref();
         NonNull::from_raw_parts(self.data, *meta)
+    }
+}
+
+impl fmt::Pointer for ErasedNonNull {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Pointer::fmt(&self.data, f)
+    }
+}
+
+impl fmt::Debug for ErasedNonNull {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ErasedNonNull")
+            .field("data", &self.data)
+            .field("meta", &self.meta)
+            .finish_non_exhaustive()
     }
 }
 

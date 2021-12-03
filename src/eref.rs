@@ -2,6 +2,7 @@
 
 use core::ptr::Pointee;
 use core::marker::PhantomData;
+use core::fmt;
 
 use crate::ErasedNonNull;
 
@@ -40,6 +41,20 @@ impl<'a> ErasedRef<'a> {
     }
 }
 
+impl fmt::Pointer for ErasedRef {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Pointer::fmt(&self.ptr, f)
+    }
+}
+
+impl fmt::Debug for ErasedRef {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ErasedRef")
+            .field("ptr", &self.ptr)
+            .finish_non_exhaustive()
+    }
+}
+
 /// An erased mutable reference, referencing a (possibly unsized) value of unknown type. Creating
 /// one is safe, but converting it back into any type is unsafe as it requires the user to know the
 /// type stored behind the reference.
@@ -72,5 +87,19 @@ impl<'a> ErasedMut<'a> {
     /// The provided `T` must be the same type as originally stored in the reference
     pub unsafe fn reify_ref<T: ?Sized + Pointee>(&mut self) -> &mut T {
         self.ptr.reify_ptr::<T>().as_mut()
+    }
+}
+
+impl fmt::Pointer for ErasedMut {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Pointer::fmt(&self.ptr, f)
+    }
+}
+
+impl fmt::Debug for ErasedMut {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ErasedRef")
+            .field("ptr", &self.ptr)
+            .finish_non_exhaustive()
     }
 }

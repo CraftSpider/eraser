@@ -1,7 +1,7 @@
 //! A standard erased box implementation, larger but simple implementation
 
 use alloc::boxed::Box;
-use core::mem;
+use core::{mem, fmt};
 use core::ptr::{NonNull, Pointee};
 
 #[inline]
@@ -108,6 +108,21 @@ impl ErasedBox {
     /// The provided `T` must be the same type as originally stored in the box
     pub unsafe fn reify_mut<T: ?Sized>(&mut self) -> &mut T {
         self.reify_ptr().as_mut()
+    }
+}
+
+impl fmt::Pointer for ErasedBox {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Pointer::fmt(&self.data, f)
+    }
+}
+
+impl fmt::Debug for ErasedBox {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ErasedBox")
+            .field("data", &self.data)
+            .field("meta", &self.meta)
+            .finish_non_exhaustive()
     }
 }
 

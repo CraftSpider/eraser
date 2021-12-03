@@ -3,7 +3,7 @@
 use alloc::alloc::Layout;
 use alloc::boxed::Box;
 use core::ptr::{NonNull, Pointee};
-use core::{mem, ptr};
+use core::{fmt, mem, ptr};
 
 // Ebox stuff
 
@@ -213,6 +213,20 @@ impl ThinErasedBox {
         InnerData<T>: Pointee<Metadata = T::Metadata>,
     {
         self.reify_ptr().as_mut()
+    }
+}
+
+impl fmt::Pointer for ThinErasedBox {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Pointer::fmt(&self.inner, f)
+    }
+}
+
+impl fmt::Debug for ThinErasedBox {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ThinErasedBox")
+            .field("inner", &self.inner)
+            .finish_non_exhaustive()
     }
 }
 

@@ -27,8 +27,8 @@ impl<'a> ErasedRef<'a> {
     }
 
     /// Get the internal erased pointer of this reference
-    pub fn as_ptr(&self) -> ErasedNonNull {
-        self.ptr.clone()
+    pub fn as_ptr(&self) -> &ErasedNonNull {
+        &self.ptr
     }
 
     /// Get back the reference stored in this `ErasedRef`
@@ -76,8 +76,8 @@ impl<'a> ErasedMut<'a> {
     }
 
     /// Get the internal erased pointer of this reference
-    pub fn as_ptr(&self) -> ErasedNonNull {
-        self.ptr.clone()
+    pub fn as_ptr(&self) -> &ErasedNonNull {
+        &self.ptr
     }
 
     /// Get back the mutable reference stored in this `ErasedRef`

@@ -15,7 +15,6 @@ fn drop_impl<T: ?Sized + Pointee>(meta: NonNull<()>) {
 ///
 /// This type will always be three pointers wide, even for sized types, due to needing to store
 /// an unknown metadata.
-#[derive(Clone)]
 pub struct ErasedPtr {
     data: *const (),
     meta: NonNull<()>,
@@ -110,7 +109,6 @@ impl Drop for ErasedPtr {
 ///
 /// This type will always be three pointers wide, even for sized types, due to needing to store
 /// an unknown metadata.
-#[derive(Clone)]
 pub struct ErasedNonNull {
     data: NonNull<()>,
     meta: NonNull<()>,

@@ -17,6 +17,7 @@ jobs:
         with:
           toolchain: nightly
           override: true
+          components: miri
 
       - name: Run tests
         uses: actions-rs/cargo@v1
@@ -43,6 +44,7 @@ jobs:
         with:
           toolchain: nightly
           override: true
+          components: rustfmt, clippy
 
       - name: Run rustfmt
         uses: actions-rs/cargo@v1

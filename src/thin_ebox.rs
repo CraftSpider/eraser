@@ -30,13 +30,18 @@ mod hidden {
                     mem::size_of::<CommonInnerData>(),
                     mem::size_of::<T::Metadata>(),
                     mem::size_of_val(val),
-                ].into_iter().sum();
+                ]
+                .into_iter()
+                .sum();
 
                 let align = [
                     mem::align_of::<CommonInnerData>(),
                     mem::align_of::<T::Metadata>(),
                     mem::align_of_val(val),
-                ].into_iter().max().unwrap();
+                ]
+                .into_iter()
+                .max()
+                .unwrap();
 
                 Layout::from_size_align(min_size, align)
                     .expect("Valid size/align pair")
@@ -46,8 +51,7 @@ mod hidden {
             // SAFETY: Layout size is guaranteed non-zero, as it's a sum involving at least one
             //         non-ZST
             let alloced = unsafe { alloc::alloc::alloc(layout) };
-            let new = NonNull::new(alloced)
-                .expect("Allocation returned nullptr");
+            let new = NonNull::new(alloced).expect("Allocation returned nullptr");
 
             NonNull::from_raw_parts(new.cast(), val_meta)
         }
@@ -73,9 +77,7 @@ mod hidden {
                 (*new_ptr.as_ptr()).common = CommonInnerData::new::<T>();
             };
             // SAFETY: We just allocated this pointer, we know it's valid
-            unsafe {
-                (*new_ptr.as_ptr()).meta = meta
-            };
+            unsafe { (*new_ptr.as_ptr()).meta = meta };
 
             // Copy the possibly unsized value into our new InnerData
             let b_ptr = ptr.cast::<u8>();
@@ -117,7 +119,8 @@ where
     // SAFETY: We assume our input pointers to an `InnerData<T>` by safety constraints. This means
     //         we know a metadata resides at an offset of 1 `CommonInnerData` from the start of the
     //         allocation, and that it is part of the same allocation
-    let meta_ptr = ptr.cast::<CommonInnerData>()
+    let meta_ptr = ptr
+        .cast::<CommonInnerData>()
         .as_ptr()
         .add(1)
         .cast::<T::Metadata>();
@@ -173,8 +176,7 @@ impl ThinErasedBox {
         //         at an offset of 1 `CommonInnerData` from the start of the allocation, and that it
         //         is part of the same allocation
         let meta_ptr = unsafe {
-            self
-                .inner
+            self.inner
                 .as_ptr()
                 .cast::<CommonInnerData>()
                 .add(1)

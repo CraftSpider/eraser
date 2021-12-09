@@ -79,6 +79,7 @@ mod hidden {
 
             // Copy the possibly unsized value into our new InnerData
             let b_ptr = ptr.cast::<u8>();
+            // SAFETY: We just allocated `new_ptr`, we know it's valid
             let new_data_ptr = unsafe { ptr::addr_of_mut!((*new_ptr.as_ptr()).data).cast::<u8>() };
             // SAFETY:
             // - `b_ptr` is from a Box::into_raw, it is valid and aligned

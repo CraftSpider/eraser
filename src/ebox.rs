@@ -6,9 +6,8 @@ use core::{fmt, mem};
 
 #[inline]
 fn reify_ptr<T: ?Sized + Pointee>(data: NonNull<()>, meta: NonNull<()>) -> NonNull<T> {
-    // SAFETY: Meta will be valid as it came from a Box::leak call
+    // SAFETY: Meta will be valid as it came from a `Box::leak` of the correct type call
     let meta = *unsafe { meta.cast::<T::Metadata>().as_ref() };
-    // SAFETY: Meta will have come from Box::leak of the correct type
     NonNull::<T>::from_raw_parts(data, meta)
 }
 
@@ -16,8 +15,9 @@ fn reify_ptr<T: ?Sized + Pointee>(data: NonNull<()>, meta: NonNull<()>) -> NonNu
 fn reify_box<T: ?Sized + Pointee>(data: NonNull<()>, meta: NonNull<()>) -> Box<T> {
     let data = reify_ptr(data, meta);
     let meta_ptr = meta.cast::<T::Metadata>().as_ptr();
-    // SAFETY: Meta will have come from Box::leak of the correct type
+    // SAFETY: Meta will have come from `Box::leak` of the correct type
     unsafe { Box::from_raw(meta_ptr) };
+    // SAFETY: Data pointer will have come from `Box::leak` of the correct type
     unsafe { Box::from_raw(data.as_ptr()) }
 }
 

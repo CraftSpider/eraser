@@ -14,7 +14,7 @@
 //! The unowned equivalent to an erased box. Basically just a pointer-meta pair, that ensures
 //! the meta is handled correctly on destruction.
 
-#![feature(ptr_metadata, layout_for_ptr)]
+#![feature(ptr_metadata)]
 #![warn(
     missing_docs,
     elided_lifetimes_in_paths,

@@ -25,17 +25,31 @@ mod hidden {
         {
             let val_meta = (val as *const T).to_raw_parts().1;
 
-            let layout = unsafe {
-                Layout::for_value_raw(ptr::from_raw_parts::<InnerData<T>>(ptr::null(), val_meta))
+            let layout = {
+                let min_size = [
+                    mem::size_of::<CommonInnerData>(),
+                    mem::size_of::<T::Metadata>(),
+                    mem::size_of_val(val),
+                ].into_iter().sum();
+
+                let align = [
+                    mem::align_of::<CommonInnerData>(),
+                    mem::align_of::<T::Metadata>(),
+                    mem::align_of_val(val),
+                ].into_iter().max().unwrap();
+
+                Layout::from_size_align(min_size, align)
+                    .expect("Valid size/align pair")
+                    .pad_to_align()
             };
 
-            let new = unsafe { NonNull::new_unchecked(alloc::alloc::alloc(layout)) };
+            // SAFETY: Layout size is guaranteed non-zero, as it's a sum involving at least one
+            //         non-ZST
+            let alloced = unsafe { alloc::alloc::alloc(layout) };
+            let new = NonNull::new(alloced)
+                .expect("Allocation returned nullptr");
 
-            let new_meta = unsafe {
-                *((&val_meta as *const T::Metadata).cast::<<InnerData<T> as Pointee>::Metadata>())
-            };
-
-            NonNull::from_raw_parts(new.cast(), new_meta)
+            NonNull::from_raw_parts(new.cast(), val_meta)
         }
 
         pub(crate) fn new(val: Box<T>) -> NonNull<InnerData<T>>
@@ -50,20 +64,34 @@ mod hidden {
             // Leak the value, get its pointer and metadata
             let (ptr, meta) = Box::into_raw(val).to_raw_parts();
 
-            // Initialize the InnerData's drop and meta values
+            // Initialize the InnerData's drop and meta values. Note we use pointer dereference
+            // without intermediate references to avoid possible UB due to references to uninit
+            // memory
+
+            // SAFETY: We just allocated this pointer, we know it's valid
             unsafe {
                 (*new_ptr.as_ptr()).common = CommonInnerData::new::<T>();
             };
-            unsafe { (*new_ptr.as_ptr()).meta = meta };
+            // SAFETY: We just allocated this pointer, we know it's valid
+            unsafe {
+                (*new_ptr.as_ptr()).meta = meta
+            };
 
             // Copy the possibly unsized value into our new InnerData
             let b_ptr = ptr.cast::<u8>();
             let new_data_ptr = unsafe { ptr::addr_of_mut!((*new_ptr.as_ptr()).data).cast::<u8>() };
+            // SAFETY:
+            // - `b_ptr` is from a Box::into_raw, it is valid and aligned
+            // - `new_data_ptr` is from our new allocation, which is valid and aligned
+            // - `b_ptr` cannot overlap `new_data_ptr` as they are unrelated allocations
             unsafe {
                 ptr::copy_nonoverlapping(b_ptr, new_data_ptr, b_size);
             };
 
             // Deallocate the leaked value, as we've copied out of it
+            // SAFETY:
+            // - We got the pointer from a `Box` using the global allocator
+            // - The layout is from `Layout::for_value`
             unsafe {
                 alloc::alloc::dealloc(ptr.cast(), b_layout);
             }
@@ -75,25 +103,33 @@ mod hidden {
 
 use hidden::*;
 
-fn drop_impl<T>(ptr: NonNull<()>)
+/// # Safety
+///
+/// This function requires the input pointer be an erased pointer to an instance of `InnerData<T>`,
+/// and valid to pass to `Box::from_raw` (Derived from `Box::leak` or allocated with the global
+/// allocator and a correct layout).
+unsafe fn drop_impl<T>(ptr: NonNull<()>)
 where
     T: ?Sized + Pointee,
     InnerData<T>: Pointee<Metadata = T::Metadata>,
 {
-    let meta_ptr = unsafe {
-        ptr.cast::<CommonInnerData>()
-            .as_ptr()
-            .add(1)
-            .cast::<T::Metadata>()
-    };
-    let meta = unsafe { *meta_ptr };
+    // SAFETY: We assume our input pointers to an `InnerData<T>` by safety constraints. This means
+    //         we know a metadata resides at an offset of 1 `CommonInnerData` from the start of the
+    //         allocation, and that it is part of the same allocation
+    let meta_ptr = ptr.cast::<CommonInnerData>()
+        .as_ptr()
+        .add(1)
+        .cast::<T::Metadata>();
+    // SAFETY: We assume our input pointer is valid by safety constraints
+    let meta = *meta_ptr;
     let ptr = NonNull::<InnerData<T>>::from_raw_parts(ptr, meta);
-    unsafe { Box::from_raw(ptr.as_ptr()) };
+    // SAFETY: We assume out input pointer is from `Box::into_raw` by safety constraints
+    Box::from_raw(ptr.as_ptr());
 }
 
 #[repr(C)]
 struct CommonInnerData {
-    drop: fn(NonNull<()>),
+    drop: unsafe fn(NonNull<()>),
 }
 
 impl CommonInnerData {
@@ -132,8 +168,11 @@ impl ThinErasedBox {
     where
         InnerData<T>: Pointee<Metadata = T::Metadata>,
     {
-        let meta = unsafe {
-            *self
+        // SAFETY: `inner` points to a valid `InnerData<T>`, which we know contains a `T::Metadata`
+        //         at an offset of 1 `CommonInnerData` from the start of the allocation, and that it
+        //         is part of the same allocation
+        let meta_ptr = unsafe {
+            self
                 .inner
                 .as_ptr()
                 .cast::<CommonInnerData>()
@@ -141,10 +180,14 @@ impl ThinErasedBox {
                 .cast::<T::Metadata>()
         };
 
+        // SAFETY: Our inner pointer is guaranteed valid and safe to dereference
+        let meta = unsafe { *meta_ptr };
+
         NonNull::from_raw_parts(self.inner, meta)
     }
 
-    /// Get a pointer to the value stored in this `ThinErasedBox`
+    /// Get a pointer to the value stored in this `ThinErasedBox`. This pointer is guaranteed
+    /// correctly aligned and dereferencable, until this box is dropped.
     ///
     /// # Safety
     ///
@@ -153,6 +196,7 @@ impl ThinErasedBox {
     where
         InnerData<T>: Pointee<Metadata = T::Metadata>,
     {
+        // SAFETY: `inner_data()` will return a valid pointer, assuming `T` matches our invariants
         NonNull::from(&self.inner_data::<T>().as_ref().data)
     }
 
@@ -166,26 +210,50 @@ impl ThinErasedBox {
         InnerData<T>: Pointee<Metadata = T::Metadata>,
     {
         // Take ownership of inner, it will be dropped at the end of the function
+
         let inner = self.inner_data::<T>();
+        // SAFETY: `inner_data()` will return a valid pointer, assuming `T` matches our invariants
         let inner_ref = inner.as_ref();
 
         // Allocate space to move the unsized value into
+
         let layout = Layout::for_value(&inner_ref.data);
-        let new_data = alloc::alloc::alloc(layout);
+        let new_data = if layout.size() != 0 {
+            // SAFETY: Layout is guaranteed not zero-sized, and correct for the value
+            alloc::alloc::alloc(layout)
+        } else {
+            // A non-null aligned pointer to a zero-sized type
+            layout.align() as *mut u8
+        };
 
         // Copy the unsized value out of inner
-        ptr::copy_nonoverlapping(
-            (&inner_ref.data as *const T).cast::<u8>(),
-            new_data,
-            layout.size(),
-        );
+
+        if layout.size() != 0 {
+            // SAFETY:
+            // - `inner_ref.data` is from a reference, so valid and aligned
+            // - Size isn't zero, `new_data` is from a fresh allocation, so valid and aligned
+            // - Pointers are from unrelated allocations, so cannot overlap
+            ptr::copy_nonoverlapping(
+                (&inner_ref.data as *const T).cast::<u8>(),
+                new_data,
+                layout.size(),
+            );
+        }
 
         // Create the return box from the new allocation
+
+        // SAFETY: Our new pointer is guaranteed from a valid allocation for `Box::from_raw`, or
+        //         a correctly aligned one if ZST
         let out = Box::from_raw(ptr::from_raw_parts_mut(new_data.cast(), inner_ref.meta));
 
         // Deallocate inner without dropping, as we copied out the value
+
+        // SAFETY: Our pointer came from `InnerData<T>::alloc`, which is of the correct type and
+        //         layout, and guaranteed valid up until this point
         alloc::alloc::dealloc(inner.as_ptr().cast(), Layout::for_value(inner_ref));
+
         // Don't run our normal drop code on the inner we took ownership of
+
         mem::forget(self);
 
         out
@@ -200,7 +268,11 @@ impl ThinErasedBox {
     where
         InnerData<T>: Pointee<Metadata = T::Metadata>,
     {
-        self.reify_ptr().as_ref()
+        // SAFETY: Matching safety invariants
+        let ptr = self.reify_ptr();
+        // SAFETY: Returned pointer is guaranteed valid, and we only access it with matching
+        //         lifetimes to our own references
+        ptr.as_ref()
     }
 
     /// Get a mutable reference to the value stored in this `ThinErasedBox`
@@ -212,7 +284,11 @@ impl ThinErasedBox {
     where
         InnerData<T>: Pointee<Metadata = T::Metadata>,
     {
-        self.reify_ptr().as_mut()
+        // SAFETY: Matching safety invariants
+        let mut ptr = self.reify_ptr();
+        // SAFETY: Returned pointer is guaranteed valid, and we only access it with matching
+        //         lifetimes to our own references
+        ptr.as_mut()
     }
 }
 
@@ -245,11 +321,18 @@ where
 impl Drop for ThinErasedBox {
     fn drop(&mut self) {
         let f = {
+            // SAFETY:
+            // - Our inner pointer is guaranteed to point to a valid `InnerData<T>`
+            // - InnerData starts with a valid CommonInnerData.
+            // - We have unique reference access, and `inner` is only accessed with matching
+            //   lifetimes to our references
             let data = unsafe { self.inner.cast::<CommonInnerData>().as_ref() };
             data.drop
         };
 
-        f(self.inner)
+        // SAFETY: Our inner pointer came from `InnerData<T>::alloc`, which is of the correct type
+        //         and layout to fulfill the `drop_impl` constraints
+        unsafe { f(self.inner) }
     }
 }
 

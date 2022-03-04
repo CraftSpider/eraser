@@ -19,7 +19,7 @@ pub struct ErasedRef<'a> {
 
 impl<'a> ErasedRef<'a> {
     /// Create a new `ErasedRef` from a reference
-    pub fn new<T: ?Sized>(val: &T) -> ErasedRef<'a> {
+    pub fn new<T: ?Sized>(val: &'a T) -> ErasedRef<'a> {
         ErasedRef {
             ptr: ErasedNonNull::from(val),
             _phantom: PhantomData,
@@ -68,7 +68,7 @@ pub struct ErasedMut<'a> {
 
 impl<'a> ErasedMut<'a> {
     /// Create a new `ErasedMute` from a reference
-    pub fn new<T: ?Sized>(val: &mut T) -> ErasedMut<'a> {
+    pub fn new<T: ?Sized>(val: &'a mut T) -> ErasedMut<'a> {
         ErasedMut {
             ptr: ErasedNonNull::from(val),
             _phantom: PhantomData,

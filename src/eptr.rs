@@ -97,6 +97,18 @@ impl<T: ?Sized> From<*mut T> for ErasedPtr {
     }
 }
 
+impl<T: ?Sized> From<&T> for ErasedPtr {
+    fn from(val: &T) -> Self {
+        ErasedPtr::new(val)
+    }
+}
+
+impl<T: ?Sized> From<&mut T> for ErasedPtr {
+    fn from(val: &mut T) -> Self {
+        ErasedPtr::new(val)
+    }
+}
+
 impl Drop for ErasedPtr {
     fn drop(&mut self) {
         (self.drop)(self.meta)
@@ -161,6 +173,12 @@ impl fmt::Debug for ErasedNonNull {
             .field("data", &self.data)
             .field("meta", &self.meta)
             .finish_non_exhaustive()
+    }
+}
+
+impl<T: ?Sized> From<NonNull<T>> for ErasedNonNull {
+    fn from(val: NonNull<T>) -> Self {
+        ErasedNonNull::new(val)
     }
 }
 

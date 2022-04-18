@@ -15,6 +15,9 @@ fn drop_impl<T: ?Sized + Pointee>(meta: NonNull<()>) {
 ///
 /// This type will always be three pointers wide, even for sized types, due to needing to store
 /// an unknown metadata.
+///
+/// Note that, like [`NonNull`], this type provides `From<&T>`. This has the same invariants as
+/// [`NonNull`], it is UB to mutate through a pointer derived from a shared reference.
 pub struct ErasedPtr {
     data: *const (),
     meta: NonNull<()>,
@@ -121,6 +124,9 @@ impl Drop for ErasedPtr {
 ///
 /// This type will always be three pointers wide, even for sized types, due to needing to store
 /// an unknown metadata.
+///
+/// Note that, like [`NonNull`], this type provides `From<&T>`. This has the same invariants as
+/// [`NonNull`], it is UB to mutate through a pointer derived from a shared reference.
 pub struct ErasedNonNull {
     data: NonNull<()>,
     meta: NonNull<()>,
@@ -198,4 +204,40 @@ impl Drop for ErasedNonNull {
     fn drop(&mut self) {
         (self.drop)(self.meta)
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_eptr_ptr() {
+        let item: i16 = 6;
+
+        let ep = ErasedPtr::new(&item as *const i16);
+        let val = unsafe { *ep.reify_ptr::<i16>() };
+        assert_eq!(val, 6);
+    }
+
+    #[test]
+    fn test_eptr_ptr_mut() {
+        let mut item: i16 = -5;
+
+        let ep = ErasedPtr::new(&mut item as *mut i16);
+        let ptr = unsafe { ep.reify_ptr_mut::<i16>() };
+        assert_eq!(unsafe { *ptr }, -5);
+        unsafe { *ptr = -10 };
+        let ptr = unsafe { ep.reify_ptr_mut::<i16>() };
+        assert_eq!(unsafe { *ptr }, -10);
+    }
+
+    #[test]
+    fn test_nonnull_ptr() {
+        let item: &str = "FOO";
+
+        let np = ErasedNonNull::from(&item);
+        let val = unsafe { *np.reify_ptr::<&'static str>().as_ref() };
+        assert_eq!(val, "FOO");
+    }
+
 }

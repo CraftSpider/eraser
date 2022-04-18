@@ -200,7 +200,9 @@ impl ThinErasedBox {
         InnerData<T>: Pointee<Metadata = T::Metadata>,
     {
         // SAFETY: `inner_data()` will return a valid pointer, assuming `T` matches our invariants
-        NonNull::from(&self.inner_data::<T>().as_ref().data)
+        //         We don't hold these mutable references longer than this statement, they cannot
+        //         exist at the same time as another.
+        NonNull::from(&mut self.inner_data::<T>().as_mut().data)
     }
 
     /// Convert an `ThinErasedBox` back into a [`Box`] of the provided type
@@ -346,6 +348,15 @@ mod tests {
     #[test]
     fn test_eb_drop() {
         ThinErasedBox::new::<i32>(1);
+    }
+
+    #[test]
+    fn test_eb_reify_ptr() {
+        let eb = ThinErasedBox::new::<u32>(1);
+        let ptr1 = unsafe { eb.reify_ptr::<u32>() };
+        let ptr2 = unsafe { eb.reify_ptr::<u32>() };
+
+        (|_, _| {})(ptr1, ptr2);
     }
 
     #[test]

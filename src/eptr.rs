@@ -239,5 +239,4 @@ mod tests {
         let val = unsafe { *np.reify_ptr::<&'static str>().as_ref() };
         assert_eq!(val, "FOO");
     }
-
 }

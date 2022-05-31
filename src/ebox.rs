@@ -170,4 +170,13 @@ mod tests {
         let val2 = unsafe { eb.reify_mut::<f32>() };
         assert_eq!(*val2, 2.5);
     }
+
+    #[test]
+    fn test_zst() {
+        #[derive(Debug, PartialEq)]
+        struct Foo;
+
+        let eb = ErasedBox::new(Foo);
+        assert_eq!(*unsafe { eb.reify_ref::<Foo>() }, Foo);
+    }
 }

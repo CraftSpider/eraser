@@ -95,8 +95,10 @@ mod hidden {
             // SAFETY:
             // - We got the pointer from a `Box` using the global allocator
             // - The layout is from `Layout::for_value`
-            unsafe {
-                alloc::alloc::dealloc(ptr.cast(), b_layout);
+            if b_layout.size() != 0 {
+                unsafe {
+                    alloc::alloc::dealloc(ptr.cast(), b_layout);
+                }
             }
 
             new_ptr
@@ -379,5 +381,14 @@ mod tests {
         *val = 2.5;
         let val2 = unsafe { eb.reify_mut::<f32>() };
         assert_eq!(*val2, 2.5);
+    }
+
+    #[test]
+    fn test_zst() {
+        #[derive(Debug, PartialEq)]
+        struct Foo;
+
+        let eb = ThinErasedBox::new(Foo);
+        assert_eq!(*unsafe { eb.reify_ref::<Foo>() }, Foo);
     }
 }

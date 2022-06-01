@@ -44,6 +44,11 @@ impl ErasedBox {
         ErasedBox::from(Box::new(val))
     }
 
+    /// Create a new `ErasedBox` from an existing `Box`
+    pub fn from_box<T>(val: Box<T>) -> ErasedBox {
+        ErasedBox::from(val)
+    }
+
     /// Create a new `ErasedBox` from a pointer to an existing allocation
     ///
     /// # Safety
@@ -143,6 +148,8 @@ impl Drop for ErasedBox {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use alloc::string::String;
+    use alloc::format;
 
     #[test]
     fn test_eb_drop() {
@@ -178,5 +185,23 @@ mod tests {
 
         let eb = ErasedBox::new(Foo);
         assert_eq!(*unsafe { eb.reify_ref::<Foo>() }, Foo);
+    }
+
+    #[test]
+    fn test_str() {
+        let eb: ErasedBox = String::from("foo").into_boxed_str().into();
+        assert_eq!(unsafe { eb.reify_ref::<str>() }, "foo");
+    }
+
+    #[test]
+    fn test_dyn_val() {
+        let eb: ErasedBox = (Box::new(123.45) as Box<dyn fmt::Debug>).into();
+        assert_eq!(format!("{:?}", unsafe { eb.reify_ref::<dyn fmt::Debug>() }), "123.45");
+    }
+
+    #[test]
+    fn test_slice() {
+        let eb: ErasedBox = (Box::new([1, 2, 3]) as Box<[i32]>).into();
+        assert_eq!(unsafe { eb.reify_ref::<[i32]>() }, [1, 2, 3]);
     }
 }

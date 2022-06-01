@@ -346,6 +346,8 @@ impl Drop for ThinErasedBox {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use alloc::string::String;
+    use alloc::format;
 
     #[test]
     fn test_eb_drop() {
@@ -390,5 +392,23 @@ mod tests {
 
         let eb = ThinErasedBox::new(Foo);
         assert_eq!(*unsafe { eb.reify_ref::<Foo>() }, Foo);
+    }
+
+    #[test]
+    fn test_str() {
+        let eb: ThinErasedBox = String::from("foo").into_boxed_str().into();
+        assert_eq!(unsafe { eb.reify_ref::<str>() }, "foo");
+    }
+
+    #[test]
+    fn test_dyn_val() {
+        let eb: ThinErasedBox = (Box::new(123.45) as Box<dyn fmt::Debug>).into();
+        assert_eq!(format!("{:?}", unsafe { eb.reify_ref::<dyn fmt::Debug>() }), "123.45");
+    }
+
+    #[test]
+    fn test_slice() {
+        let eb: ThinErasedBox = (Box::new([1, 2, 3]) as Box<[i32]>).into();
+        assert_eq!(unsafe { eb.reify_ref::<[i32]>() }, [1, 2, 3]);
     }
 }
